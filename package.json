@@ -1,0 +1,42 @@
+{
+  "name": "fbself-m",
+  "version": "0.0.1",
+  "description": "Interact with Facebook using user accounts (self-bot) through mini/mobile version (m.facebook)",
+  "main": "dist/bundle.js",
+  "scripts": {
+    "build": "rollup --config",
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BadAimWeeb/fbself-m.git"
+  },
+  "keywords": [
+    "facebook",
+    "api",
+    "self",
+    "bot",
+    "fb"
+  ],
+  "author": "BadAimWeeb",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/BadAimWeeb/fbself-m/issues"
+  },
+  "homepage": "https://github.com/BadAimWeeb/fbself-m#readme",
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^19.0.0",
+    "@rollup/plugin-node-resolve": "^13.0.0",
+    "@rollup/plugin-typescript": "^8.2.1",
+    "@types/node-fetch": "^2.5.11",
+    "@types/tough-cookie": "^4.0.1",
+    "mocha": "^9.0.2",
+    "rollup": "^2.53.1"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.10",
+    "msgpack5": "^5.3.2",
+    "node-fetch": "^2.6.1",
+    "tough-cookie": "^4.0.0"
+  }
+}

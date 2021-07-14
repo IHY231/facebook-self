@@ -15,7 +15,8 @@ export default async function logout(ctx: HTTPContext) {
         headers: {
             "Origin": "mbasic.facebook.com",
             "Referer": "https://mbasic.facebook.com/menu/bookmarks/"
-        }
+        },
+        allowForbiddenHeaders: true
     });
 
     if (logoutURL.startsWith("https://mbasic.facebook.com/login/save-password-interstitial/")) {
@@ -37,7 +38,8 @@ export default async function logout(ctx: HTTPContext) {
                 "Referer": logoutURL,
                 "Content-Type": "application/x-www-form-urlencoded"
             },
-            body: qs.stringify(f, "&", "=")
+            body: qs.stringify(f, "&", "="),
+            allowForbiddenHeaders: true
         });
 
         if (!l2.ok) throw new Error("Facebook returned HTTP error code " + l2.status);

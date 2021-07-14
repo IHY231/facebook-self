@@ -33,6 +33,7 @@ export default class FacebookBasicALoginHandler extends FacebookALoginHandler {
                 "Referer": "https://mbasic.facebook.com/",
                 "Content-Type": "application/x-www-form-urlencoded"
             },
+            allowForbiddenHeaders: true,
             body: qs.stringify(postObj, "&", "=")
         });
 

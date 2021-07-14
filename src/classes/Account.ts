@@ -1,43 +1,50 @@
-import FacebookALoginHandler from "../types/FacebookALoginHandler";
+import FacebookALoginHandler from "../types/ALoginHandler";
 import account_logout from "../functions/account_logout";
-import FacebookAccountState from "./FacebookAccountState";
+import FacebookAccountState from "./AccountState";
+import FacebookBasicALoginHandler from "./BasicALoginHandler";
+import HTTPContext from "./HTTPContext";
+
+const defaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36";
 
 export default class FacebookAccount {
-    #pEmail: string | null;
-    #pPassword: string | null;
-    #pState: FacebookAccountState | null;
-    #p2FA: () => Promise<string> | null;
+    #pEmail: string | null = null;
+    #pPassword: string | null = null;
+    #pState: FacebookAccountState = new FacebookAccountState();
+    #pContext: HTTPContext;
+    #p2FA: (() => Promise<string>) | null = null;
     #pLoggedIn = false;
+    #pAccountID: string | null = null;
 
-    public userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36";
-
-    public get email() {
-        return this.#pEmail;
+    public get userAgent() {
+        return this.#pContext.userAgent;
+    }
+    public set userAgent(ua: string) {
+        this.#pContext.userAgent = ua;
     }
 
-    public get state() {
-        this.#pState = this.#pState ?? new FacebookAccountState();
+    public get email(): string | null {
+        return this.#pEmail;
+    }
+    public set email(value: string | null) {
+        this.#pEmail = value;
+    }
+
+    public async getStateBuf() {
         return this.#pState.getState();
+    }
+    public async setStateBuf(value: Buffer) {
+        this.#pState.setState(value);
+    }
+    public get stateObj() {
+        return this.#pState;
     }
 
     public get loggedIn() {
         return this.#pLoggedIn;
     }
 
-    public set email(value: string) {
-        this.#pEmail = value;
-    }
-
-    public set password(value: string) {
+    public set password(value: string | null) {
         this.#pPassword = value;
-    }
-
-    public set state(value: Buffer) {
-        if (this.#pState instanceof FacebookAccountState) {
-            this.#pState.setState(value);
-        } else {
-            this.#pState = new FacebookAccountState(value);
-        }
     }
 
     public set twoFactorAuth(value: () => Promise<string>) {
@@ -54,7 +61,7 @@ export default class FacebookAccount {
         } else if (args[0] instanceof FacebookAccountState) {
             this.#pState = args[0];
         } else {
-            if (this.#pEmail && this.#pPassword) {
+            if (typeof args[0] === "string" && typeof args[1] === "string") {
                 this.#pEmail = args[0];
                 this.#pPassword = args[1];
                 if (args[2] instanceof Buffer) {
@@ -71,13 +78,16 @@ export default class FacebookAccount {
                 throw new Error("You must add email + password combination and/or account state.");
             }
         }
+
+        this.#pContext = new HTTPContext(defaultUserAgent, this.#pState);
     }
 
     /** Attempt to login using current credentials. */
-    async login(force?: boolean, handler?: FacebookALoginHandler);
+    async login(handler?: FacebookALoginHandler): Promise<void>;
+    async login(force?: boolean, handler?: FacebookALoginHandler): Promise<void>;
     async login(...args: any[]) {
         let force = false;
-        let handler: FacebookALoginHandler;
+        let handler: FacebookALoginHandler = new FacebookBasicALoginHandler();
 
         if (typeof args[0] === "boolean") {
             force = args[0];
@@ -89,8 +99,14 @@ export default class FacebookAccount {
         }
 
         if (!this.#pLoggedIn || force) {
-            this.#pState = this.#pState ?? new FacebookAccountState();
-            await handler.login(this.#pEmail, this.#pPassword, this.#pState, this.#p2FA);
+            if (
+                typeof this.#pEmail === "string" &&
+                typeof this.#pPassword === "string"
+            ) {
+                this.#pAccountID = await handler.login(this.#pContext, this.#pEmail, this.#pPassword, this.#p2FA);
+            } else {
+                this.#pAccountID = await handler.verify(this.#pContext);
+            }
             await handler.close();
 
             this.#pLoggedIn = true;
@@ -100,8 +116,22 @@ export default class FacebookAccount {
     /** Logout. Simple. */
     async logout() {
         if (this.#pLoggedIn) {
-            await account_logout(this.#pState, this.userAgent);
+            await account_logout(this.#pContext);
             this.#pLoggedIn = false;
         }
+    }
+
+    /** Verify that we are still logged in (and account is not checkpointed). */
+    async verify(handler?: FacebookALoginHandler) {
+        if (!handler) handler = new FacebookBasicALoginHandler();
+        this.#pAccountID = await handler.verify(this.#pContext);
+        if (this.#pAccountID) {
+            this.#pLoggedIn = true;
+        } else {
+            this.#pLoggedIn = false;
+        }
+        
+
+        return this.#pLoggedIn;
     }
 }

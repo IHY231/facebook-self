@@ -1,18 +1,20 @@
 import { gzipSync, gunzipSync } from "zlib";
 import msgpack from "msgpack5";
-import toughCookie from "tough-cookie";
+import { CookieJar } from "fetch-h2";
 
 let mpack = msgpack();
 
 export default class FacebookAccountState {
-    #jar = new toughCookie.CookieJar;
+    #jar = new CookieJar();
 
     /** Construct a new AccountState object. */
     constructor(state?: Buffer) {
-        this.setState(state);
+        if (state instanceof Buffer) {
+            this.setState(state);
+        }
     }
 
-    setState(state: Buffer) {
+    async setState(state: Buffer) {
         if (state instanceof Buffer) {
             let m = gunzipSync(state);
 
@@ -27,43 +29,40 @@ export default class FacebookAccountState {
             }[] = mpack.decode(m);
 
             for (let oc of o) {
-                this.#jar.setCookieSync(`${oc.key}=${oc.value}`, "https://m.facebook.com/");
+                await this.#jar.setCookie(`${oc.key}=${oc.value}`, "https://m.facebook.com/");
             }
         }
     }
 
     /** Clear. */
     clear() {
-        this.#jar.removeAllCookiesSync();
+        this.#jar.reset();
     }
 
-    /** Import from cookie string returned from Facebook. */
-    addCookieString(setCookieHeaders: string[]) {
-        for (let h of setCookieHeaders) {
-            let kv = h.split("; ")[0];
-            this.#jar.setCookieSync(kv, "https://m.facebook.com/");
-        }
+    /** Export as cookie string. */
+    async getCookieString() {
+        return (await this.#jar.getCookies("https://m.facebook.com/")).map(v => `${v.key}=${v.value}`).join("; ");
     }
 
-    /** Export as cookie string (that will added in every request to Facebook). */
-    getCookieString() {
-        return this.#jar.getCookieStringSync("https://m.facebook.com/");
+    /** Return CookieJar that could be used to insert to fetch-h2. */
+    getCookieJar() {
+        return this.#jar;
     }
 
     /** Export as buffer to store. */
-    getState() {
-        let o = this.#jar.getCookiesSync("https://m.facebook.com/").map(v => ({
+    async getState() {
+        let o = (await this.#jar.getCookies("https://m.facebook.com/")).map(v => ({
             key: v.key,
             value: v.value,
             path: v.path,
             domain: "facebook.com",
             hostOnly: v.hostOnly,
-            creation: v.creation.toISOString(),
-            lastAccessed: v.lastAccessed.toISOString()
+            creation: v.creation?.toISOString(),
+            lastAccessed: v.lastAccessed?.toISOString()
         }));
 
         let b = mpack.encode(o);
 
-        return gzipSync(b);
+        return gzipSync(b.copy(Buffer.from([])));
     }
 }

@@ -4,11 +4,18 @@ import nodeResolve from "@rollup/plugin-node-resolve";
 
 export default {
     input: 'src/main.ts',
-    output: {
-        file: 'dist/bundle.js',
-        format: 'cjs',
-        sourcemap: true
-    },
+    output: [
+        {
+            file: 'dist/bundle.common.js',
+            format: 'cjs',
+            sourcemap: true
+        },
+        {
+            file: 'dist/bundle.es.js',
+            format: 'es',
+            sourcemap: true
+        }
+    ],
     plugins: [
         nodeResolve({
             browser: false

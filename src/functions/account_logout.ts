@@ -1,29 +1,20 @@
-import fetch from "node-fetch";
 import cheerio from "cheerio";
 import qs from "querystring";
-import FacebookAccountState from "../classes/FacebookAccountState";
+import HTTPContext from "../classes/HTTPContext";
 
-export default async function logout(state: FacebookAccountState, userAgent: string) {
-    let r = await fetch("https://mbasic.facebook.com/menu/bookmarks/", {
-        method: "GET",
-        headers: {
-            "Accept": "*/*",
-            "Cookie": state.getCookieString(),
-            "User-Agent": userAgent
-        }
-    });
+export default async function logout(ctx: HTTPContext) {
+    let r = await ctx.context.fetch("https://mbasic.facebook.com/menu/bookmarks/");
+
+    if (!r.ok) throw new Error("Facebook returned HTTP error code " + r.status);
 
     let $ = cheerio.load(await r.text());
-    let logoutURL = $("#mbasic_logout_button").attr("href");
+    let logoutURL = $("#mbasic_logout_button").attr("href") ?? "";
 
-    let l = await fetch(logoutURL, {
+    let l = await ctx.context.fetch(logoutURL, {
         method: "GET",
         headers: {
             "Origin": "mbasic.facebook.com",
-            "Referer": "https://mbasic.facebook.com/menu/bookmarks/",
-            "Accept": "*/*",
-            "Cookie": state.getCookieString(),
-            "User-Agent": userAgent
+            "Referer": "https://mbasic.facebook.com/menu/bookmarks/"
         }
     });
 
@@ -31,24 +22,24 @@ export default async function logout(state: FacebookAccountState, userAgent: str
         $ = cheerio.load(await l.text());
         let newLogoutURL = $("form[action^='/logout.php']").attr("action");
 
-        let f: {[x: string]: string} = {};
+        let f: { [key: string]: string } = {};
         $("form[action^='/logout.php'] input").each((_i, el) => {
-            if ($(el).attr("name")) {
-                f[$(el).attr("name")] = $(el).attr("value");
+            let name = $(el).attr("name");
+            if (typeof name === "string") {
+                f[name] = $(el).attr("value") ?? "";
             }
         });
 
-        await fetch(newLogoutURL, {
+        let l2 = await ctx.context.fetch(newLogoutURL ?? "", {
             method: "POST",
             headers: {
                 "Origin": "mbasic.facebook.com",
                 "Referer": logoutURL,
-                "Accept": "*/*",
-                "Cookie": state.getCookieString(),
-                "User-Agent": userAgent,
                 "Content-Type": "application/x-www-form-urlencoded"
             },
-            body: qs.encode(f, "&", "=")
+            body: qs.stringify(f, "&", "=")
         });
+
+        if (!l2.ok) throw new Error("Facebook returned HTTP error code " + l2.status);
     }
 }

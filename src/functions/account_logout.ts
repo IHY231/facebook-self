@@ -33,7 +33,7 @@ export default async function logout(ctx: HTTPContext) {
         let l2 = await ctx.context.fetch(newLogoutURL ?? "", {
             method: "POST",
             headers: {
-                "Origin": "mbasic.facebook.com",
+                "Origin": "https://mbasic.facebook.com",
                 "Referer": logoutURL,
                 "Content-Type": "application/x-www-form-urlencoded"
             },

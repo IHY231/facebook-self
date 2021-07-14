@@ -13,22 +13,22 @@ describe("Login", function () {
         let account = new Account("hckdqxh_bushakescu_1626222098@tfbnw.net", "mww3swya95f");
 
         step("should login", async function () {    
-            expect(account.login(new BasicALoginHandler())).to.be.fulfilled;
+            await expect(account.login(new BasicALoginHandler())).to.be.fulfilled;
             expect(account.loggedIn).to.be.true;
         });
 
         step("should correctly verify that we're logged in", async function () {
-            expect(account.verify(new BasicALoginHandler())).to.be.fulfilled.with.true;
+            await expect(account.verify(new BasicALoginHandler())).to.be.fulfilled.with.true;
             expect(account.loggedIn).to.be.true;
         });
 
         step("should logout", async function () {
-            expect(account.logout()).to.be.fulfilled;
+            await expect(account.logout()).to.be.fulfilled;
             expect(account.loggedIn).to.be.false;
         });
 
         step("should correctly verify that we're not logged in", async function () {
-            expect(account.verify(new BasicALoginHandler())).to.be.fulfilled.with.false;
+            await expect(account.verify(new BasicALoginHandler())).to.be.fulfilled.with.false;
             expect(account.loggedIn).to.be.false;
         });
     });

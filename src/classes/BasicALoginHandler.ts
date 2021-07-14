@@ -29,8 +29,8 @@ export default class FacebookBasicALoginHandler extends FacebookALoginHandler {
         let loginRequest = await ctx.context.fetch(nextURL, {
             method: "POST",
             headers: {
-                "Origin": "mbasic.facebook.com",
-                "Referer": "mbasic.facebook.com",
+                "Origin": "https://mbasic.facebook.com",
+                "Referer": "https://mbasic.facebook.com/",
                 "Content-Type": "application/x-www-form-urlencoded"
             },
             body: qs.stringify(postObj, "&", "=")

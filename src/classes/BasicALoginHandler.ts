@@ -8,7 +8,7 @@ export default class FacebookBasicALoginHandler extends FacebookALoginHandler {
     async login(ctx: HTTPContext, email: string, password: string, ask2FA?: (() => Promise<string>) | null): Promise<string> {
         // Making initial request to get login form.
         let initHTML = await ctx.context.fetch("https://mbasic.facebook.com/");
-    
+
         if (!initHTML.ok) throw new Error("Facebook returned HTTP error code " + initHTML.status);
 
         let iHTMLT = await initHTML.text();
@@ -37,6 +37,19 @@ export default class FacebookBasicALoginHandler extends FacebookALoginHandler {
             body: qs.stringify(postObj, "&", "=")
         });
 
+        if (loginRequest.status >= 300 && loginRequest.status < 400) {
+            let oldURL = nextURL;
+            nextURL = (new URL(loginRequest.headers.get("Location") ?? "", "https://mbasic.facebook.com/")).toString();
+
+            loginRequest = await ctx.context.fetch(nextURL, {
+                headers: {
+                    "Origin": "https://mbasic.facebook.com",
+                    "Referer": oldURL
+                },
+                allowForbiddenHeaders: true
+            });
+        }
+
         if (!loginRequest.ok) throw new Error("Facebook returned HTTP error code " + loginRequest.status);
 
         if (loginRequest.url.startsWith("https://mbasic.facebook.com/checkpoint")) {
@@ -56,7 +69,39 @@ export default class FacebookBasicALoginHandler extends FacebookALoginHandler {
             } catch (e) {
                 throw e ?? new Error("Cannot login with this account. Please double-check the credentials and ensure that account is not disabled/checkpointed.");
             }
+        } else if (loginRequest.url.startsWith("https://mbasic.facebook.com/login/save-device")) {
+            // Yes, we're logged in.
+            let oldURL = nextURL;
+            nextURL = "https://mbasic.facebook.com/login/save-device/cancel/?flow=interstitial_nux&nux_source=regular_login";
+
+            let p = await ctx.context.fetch(nextURL, {
+                headers: {
+                    "Origin": "https://mbasic.facebook.com",
+                    "Referer": oldURL
+                },
+                allowForbiddenHeaders: true
+            });
+
+            for (; ;) {
+                if (p.url.startsWith("https://mbasic.facebook.com/gettingstarted")) {
+                    // Oh well, getting started... is this a new account?
+                    let $2 = cheerio.load(await p.text());
+                    oldURL = nextURL;
+                    nextURL = new URL($2("a[href$='skip']").attr("href") ?? "", oldURL).toString();
+
+                    p = await ctx.context.fetch(nextURL, {
+                        headers: {
+                            "Origin": "https://mbasic.facebook.com",
+                            "Referer": oldURL
+                        },
+                        allowForbiddenHeaders: true
+                    });
+                } else {
+                    break;
+                }
+            }
         } else if (loginRequest.url.startsWith("https://mbasic.facebook.com/login")) {
+            console.log(loginRequest.url);
             let qu = new URL(loginRequest.url).searchParams;
             switch (qu.get("e")) {
                 case "1348020":
@@ -86,12 +131,12 @@ export default class FacebookBasicALoginHandler extends FacebookALoginHandler {
         let o = JSON.parse(html.match(CurrentUserInitialDataRegex)?.[1] ?? "{}");
 
         if (typeof o.ACCOUNT_ID === "string") {
-            if (+o.ACCOUNT_ID === 0 || isNaN(+o.ACCOUNT_ID)) return null; 
+            if (+o.ACCOUNT_ID === 0 || isNaN(+o.ACCOUNT_ID)) return null;
             return o.ACCOUNT_ID;
         } else {
             return null;
         }
     }
 
-    async close() {}
+    async close() { }
 }

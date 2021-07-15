@@ -4,7 +4,7 @@ import FacebookAccountState from "./AccountState";
 import FacebookBasicALoginHandler from "./BasicALoginHandler";
 import HTTPContext from "./HTTPContext";
 
-const defaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36";
+const defaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:90.0) Gecko/20100101 Firefox/90.0";
 
 export default class FacebookAccount {
     #pEmail: string | null = null;
@@ -14,6 +14,10 @@ export default class FacebookAccount {
     #p2FA: (() => Promise<string>) | null = null;
     #pLoggedIn = false;
     #pAccountID: string | null = null;
+
+    public get accountID() {
+        return this.#pAccountID;
+    }
 
     public get userAgent() {
         return this.#pContext.userAgent;
@@ -118,20 +122,16 @@ export default class FacebookAccount {
         if (this.#pLoggedIn) {
             await account_logout(this.#pContext);
             this.#pLoggedIn = false;
+            this.#pAccountID = null;
         }
     }
 
     /** Verify that we are still logged in (and account is not checkpointed). */
     async verify(handler?: FacebookALoginHandler) {
-        if (!handler) handler = new FacebookBasicALoginHandler();
-        this.#pAccountID = await handler.verify(this.#pContext);
-        if (this.#pAccountID) {
-            this.#pLoggedIn = true;
-        } else {
-            this.#pLoggedIn = false;
-        }
-        
+        if (!(handler instanceof FacebookALoginHandler)) 
+            handler = new FacebookBasicALoginHandler();
 
-        return this.#pLoggedIn;
+        this.#pAccountID = await handler.verify(this.#pContext);
+        return this.#pLoggedIn = (!!this.#pAccountID && this.#pAccountID != "0");
     }
 }

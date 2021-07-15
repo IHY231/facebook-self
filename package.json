@@ -6,7 +6,7 @@
   "module": "dist/bundle.es.js",
   "scripts": {
     "build": "rollup --config",
-    "test": "mocha --require ts-node/register test/*.spec.ts"
+    "test": "mocha --require ts-node/register --timeout 15000 test/*.spec.ts"
   },
   "repository": {
     "type": "git",

@@ -18,7 +18,7 @@ describe("Login", function () {
         });
 
         step("should correctly verify that we're logged in", async function () {
-            await expect(account.verify(new BasicALoginHandler())).to.be.fulfilled.with.true;
+            await expect(account.verify(new BasicALoginHandler())).to.eventually.be.true;
             expect(account.loggedIn).to.be.true;
         });
 
@@ -28,8 +28,8 @@ describe("Login", function () {
         });
 
         step("should correctly verify that we're not logged in", async function () {
-            await expect(account.verify(new BasicALoginHandler())).to.be.fulfilled.with.false;
+            await expect(account.verify(new BasicALoginHandler())).to.eventually.be.false;
             expect(account.loggedIn).to.be.false;
         });
     });
-})
+});

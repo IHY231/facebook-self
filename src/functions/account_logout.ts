@@ -1,27 +1,33 @@
 import cheerio from "cheerio";
 import qs from "querystring";
 import HTTPContext from "../classes/HTTPContext";
+import { URL } from "url";
 
 export default async function logout(ctx: HTTPContext) {
-    let r = await ctx.context.fetch("https://mbasic.facebook.com/menu/bookmarks/");
+    let nextURL = "https://mbasic.facebook.com/menu/bookmarks/";
+    let r = await ctx.context.fetch(nextURL);
 
     if (!r.ok) throw new Error("Facebook returned HTTP error code " + r.status);
 
     let $ = cheerio.load(await r.text());
-    let logoutURL = $("#mbasic_logout_button").attr("href") ?? "";
 
-    let l = await ctx.context.fetch(logoutURL, {
-        method: "GET",
+    let oldURL = nextURL;
+    nextURL = new URL($("#mbasic_logout_button").attr("href") ?? "", nextURL).toString();
+
+    let l = await ctx.context.fetch(nextURL, {
         headers: {
-            "Origin": "mbasic.facebook.com",
-            "Referer": "https://mbasic.facebook.com/menu/bookmarks/"
+            "Origin": "https://mbasic.facebook.com",
+            "Referer": oldURL
         },
-        allowForbiddenHeaders: true
+        allowForbiddenHeaders: true,
+        redirect: "follow"
     });
-
-    if (logoutURL.startsWith("https://mbasic.facebook.com/login/save-password-interstitial/")) {
+    
+    if (l.url.startsWith("https://mbasic.facebook.com/login/save-password-interstitial/")) {
         $ = cheerio.load(await l.text());
-        let newLogoutURL = $("form[action^='/logout.php']").attr("action");
+
+        oldURL = nextURL;
+        nextURL = new URL($("form[action^='/logout.php']").attr("action") ?? "", oldURL).toString();
 
         let f: { [key: string]: string } = {};
         $("form[action^='/logout.php'] input").each((_i, el) => {
@@ -31,11 +37,11 @@ export default async function logout(ctx: HTTPContext) {
             }
         });
 
-        let l2 = await ctx.context.fetch(newLogoutURL ?? "", {
+        let l2 = await ctx.context.fetch(nextURL, {
             method: "POST",
             headers: {
                 "Origin": "https://mbasic.facebook.com",
-                "Referer": logoutURL,
+                "Referer": oldURL,
                 "Content-Type": "application/x-www-form-urlencoded"
             },
             body: qs.stringify(f, "&", "="),

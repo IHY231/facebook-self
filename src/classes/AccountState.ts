@@ -63,6 +63,6 @@ export default class FacebookAccountState {
 
         let b = mpack.encode(o);
 
-        return gzipSync(b.copy(Buffer.from([])));
+        return gzipSync(Buffer.from(b.toString("hex"), "hex"));
     }
 }

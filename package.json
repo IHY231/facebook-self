@@ -2,16 +2,25 @@
   "name": "fbself-m",
   "version": "0.0.1",
   "description": "Interact with Facebook using user accounts (self-bot) through mini/mobile version (m.facebook)",
-  "main": "dist/bundle.common.js",
-  "module": "dist/bundle.es.js",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/types/index.d.js",
   "scripts": {
-    "build": "rollup --config",
+    "build": "npm run build:cjs && npm run build:esm && npm run build:types",
+    "build:cjs": "node tools/cleanup cjs && tsc -p config/tsconfig.cjs.json",
+    "build:esm": "node tools/cleanup esm && tsc -p config/tsconfig.esm.json",
+    "build:types": "node tools/cleanup types && tsc -p config/tsconfig.types.json",
+    "clean": "node tools/cleanup",
+    "package": "npm run build && npm pack",
     "test": "mocha --require ts-node/register --timeout 15000 test/*.spec.ts"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/BadAimWeeb/fbself-m.git"
   },
+  "files": [
+    "dist"
+  ],
   "keywords": [
     "facebook",
     "api",
@@ -26,9 +35,7 @@
   },
   "homepage": "https://github.com/BadAimWeeb/fbself-m#readme",
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^19.0.0",
-    "@rollup/plugin-node-resolve": "^13.0.0",
-    "@rollup/plugin-typescript": "^8.2.1",
+    "@tsconfig/node14": "^1.0.1",
     "@types/chai": "^4.2.21",
     "@types/chai-as-promised": "^7.1.4",
     "@types/mocha": "^8.2.3",
@@ -40,7 +47,6 @@
     "chai-as-promised": "^7.1.1",
     "mocha": "^9.0.2",
     "mocha-steps": "^1.3.0",
-    "rollup": "^2.53.1",
     "ts-node": "^10.1.0",
     "typescript": "^4.3.5"
   },

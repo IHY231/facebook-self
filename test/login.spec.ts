@@ -2,7 +2,7 @@ import "mocha";
 import { step } from "mocha-steps";
 import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
-import { Account, BasicALoginHandler } from "../src/main";
+import { Account, BasicALoginHandler } from "../src";
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;

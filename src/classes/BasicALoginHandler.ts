@@ -3,9 +3,10 @@ import cheerio from "cheerio";
 import qs from "querystring";
 import { URL } from "url";
 import HTTPContext from "./HTTPContext";
+import generate_2fa from "../functions/generate_2fa";
 
 export default class FacebookBasicALoginHandler extends FacebookALoginHandler {
-    async login(ctx: HTTPContext, email: string, password: string, ask2FA?: (() => Promise<string>) | null): Promise<string> {
+    async login(ctx: HTTPContext, email: string, password: string, ask2FA?: (() => Promise<string> | string) | string | null): Promise<string> {
         // Making initial request to get login form.
         let initHTML = await ctx.context.fetch("https://mbasic.facebook.com/");
 
@@ -14,13 +15,13 @@ export default class FacebookBasicALoginHandler extends FacebookALoginHandler {
         let iHTMLT = await initHTML.text();
         let $0 = cheerio.load(iHTMLT);
 
-        let nextURL = (new URL($0("form[method=POST]").attr("action") ?? "", "https://mbasic.facebook.com/")).toString();
+        let nextURL = (new URL($0("form[method=POST]").attr("action") ?? "/", "https://mbasic.facebook.com/")).toString();
         let postObj: { [key: string]: string } = {};
 
         $0("form[method=POST] input").each((_i, el) => {
             let $e = $0(el)
             let name = $e.attr("name");
-            if (name) postObj[name] = $e.attr("value") || "";
+            if (name) postObj[name] = $e.attr("value") ?? "";
         });
 
         postObj.email = email;
@@ -39,7 +40,7 @@ export default class FacebookBasicALoginHandler extends FacebookALoginHandler {
 
         if (loginRequest.status >= 300 && loginRequest.status < 400) {
             let oldURL = nextURL;
-            nextURL = (new URL(loginRequest.headers.get("Location") ?? "", "https://mbasic.facebook.com/")).toString();
+            nextURL = (new URL(loginRequest.headers.get("Location") ?? "/", "https://mbasic.facebook.com/")).toString();
 
             loginRequest = await ctx.context.fetch(nextURL, {
                 headers: {
@@ -57,12 +58,191 @@ export default class FacebookBasicALoginHandler extends FacebookALoginHandler {
 
             let $1 = cheerio.load(await loginRequest.text());
             try {
-                nextURL = new URL($1("form[method=post]").attr("action") ?? "", nextURL).toString();
+                let oldURL = nextURL;
+                nextURL = new URL($1("form[method=post]").attr("action") ?? "/", oldURL).toString();
                 if (nextURL.startsWith("https://mbasic.facebook.com/login/checkpoint")) {
                     postObj = {};
 
-                    // TODO: 2FA
-                    throw new Error("2FA isn't implemented yet.");
+                    $1("form[method=POST] input").each((_i, el) => {
+                        let $e = $1(el)
+                        let name = $e.attr("name");
+                        if (name) postObj[name] = $e.attr("value") ?? "";
+                    });
+
+                    if (typeof ask2FA === "string") {
+                        // 2FA secret, ok.
+                        postObj.approvals_code = generate_2fa(ask2FA);
+                    } else if (typeof ask2FA === "function") {
+                        postObj.approvals_code = await ask2FA();
+                    } else {
+                        throw new Error("Account has 2FA enabled, but no data was given to solve challenge.");
+                    }
+
+                    loginRequest = await ctx.context.fetch(nextURL, {
+                        method: "POST",
+                        headers: {
+                            "Origin": "https://mbasic.facebook.com",
+                            "Referer": oldURL,
+                            "Content-Type": "application/x-www-form-urlencoded"
+                        },
+                        allowForbiddenHeaders: true,
+                        body: qs.stringify(postObj, "&", "=")
+                    });
+
+                    let $2 = cheerio.load(await loginRequest.text());
+
+                    if ($2("#approvals_code").length) {
+                        throw new Error("Account has 2FA enabled, but wrong data was given to solve challenge.");
+                    }
+
+                    oldURL = nextURL;
+                    nextURL = new URL($2("form[method=post]").attr("action") ?? "/", oldURL).toString();
+
+                    postObj = {};
+                    $2("form[method=POST] input").each((_i, el) => {
+                        let $e = $2(el)
+                        let name = $e.attr("name");
+                        if (
+                            name && ($e.attr("type") !== "radio" || ($e.attr("type") === "radio" && $e.attr("checked")))
+                        ) postObj[name] = $e.attr("value") ?? "";
+                    });
+
+                    loginRequest = await ctx.context.fetch(nextURL, {
+                        method: "POST",
+                        headers: {
+                            "Origin": "https://mbasic.facebook.com",
+                            "Referer": oldURL,
+                            "Content-Type": "application/x-www-form-urlencoded"
+                        },
+                        allowForbiddenHeaders: true,
+                        body: qs.stringify(postObj, "&", "=")
+                    });
+
+                    if (loginRequest.status >= 300 && loginRequest.status < 400) {
+                        oldURL = nextURL;
+                        nextURL = loginRequest.headers.get("location") ?? "https://mbasic.facebook.com/";
+
+                        loginRequest = await ctx.context.fetch(nextURL, {
+                            headers: {
+                                "Origin": "https://mbasic.facebook.com",
+                                "Referer": oldURL,
+                                "Content-Type": "application/x-www-form-urlencoded"
+                            },
+                            allowForbiddenHeaders: true,
+                            body: qs.stringify(postObj, "&", "=")
+                        });
+                    }
+
+                    if (loginRequest.url.startsWith("https://mbasic.facebook.com/login/checkpoint")) {
+                        // Review recent login... oh
+                        let $4 = cheerio.load(await loginRequest.text());
+                        oldURL = nextURL;
+                        nextURL = new URL($4("form[method=post]").attr("action") ?? "/", oldURL).toString();
+
+                        postObj = {};
+                        $4("form[method=POST] input").each((_i, el) => {
+                            let $e = $4(el)
+                            let name = $e.attr("name");
+                            if (
+                                name && ($e.attr("type") !== "radio" || ($e.attr("type") === "radio" && $e.attr("checked")))
+                            ) postObj[name] = $e.attr("value") ?? "";
+                        });
+
+                        loginRequest = await ctx.context.fetch(nextURL, {
+                            method: "POST",
+                            headers: {
+                                "Origin": "https://mbasic.facebook.com",
+                                "Referer": oldURL,
+                                "Content-Type": "application/x-www-form-urlencoded"
+                            },
+                            allowForbiddenHeaders: true,
+                            body: qs.stringify(postObj, "&", "=")
+                        });
+
+                        let $5 =  cheerio.load(await loginRequest.text());
+                        oldURL = nextURL;
+                        nextURL = new URL($5("form[method=post]").attr("action") ?? "/", oldURL).toString();
+
+                        postObj = {};
+                        $5("form[method=POST] input").each((_i, el) => {
+                            let $e = $5(el)
+                            let name = $e.attr("name");
+                            if (
+                                name && ($e.attr("type") !== "radio" || ($e.attr("type") === "radio" && $e.attr("checked")))
+                            ) postObj[name] = $e.attr("value") ?? "";
+                        });
+
+                        delete postObj["submit[This wasn't me]"];
+
+                        loginRequest = await ctx.context.fetch(nextURL, {
+                            method: "POST",
+                            headers: {
+                                "Origin": "https://mbasic.facebook.com",
+                                "Referer": oldURL,
+                                "Content-Type": "application/x-www-form-urlencoded"
+                            },
+                            allowForbiddenHeaders: true,
+                            body: qs.stringify(postObj, "&", "=")
+                        });
+
+                        let $6 = cheerio.load(await loginRequest.text());
+                        oldURL = nextURL;
+                        nextURL = new URL($6("form[method=post]").attr("action") ?? "/", oldURL).toString();
+
+                        postObj = {};
+                        $6("form[method=POST] input").each((_i, el) => {
+                            let $e = $6(el)
+                            let name = $e.attr("name");
+                            if (
+                                name && ($e.attr("type") !== "radio" || ($e.attr("type") === "radio" && !$e.attr("checked")))
+                            ) postObj[name] = $e.attr("value") ?? "";
+                        });
+
+                        loginRequest = await ctx.context.fetch(nextURL, {
+                            method: "POST",
+                            headers: {
+                                "Origin": "https://mbasic.facebook.com",
+                                "Referer": oldURL,
+                                "Content-Type": "application/x-www-form-urlencoded"
+                            },
+                            allowForbiddenHeaders: true,
+                            body: qs.stringify(postObj, "&", "=")
+                        });
+
+                        if (loginRequest.status >= 300 && loginRequest.status < 400) {
+                            oldURL = nextURL;
+                            nextURL = loginRequest.headers.get("location") ?? "https://mbasic.facebook.com/";
+    
+                            loginRequest = await ctx.context.fetch(nextURL, {
+                                headers: {
+                                    "Origin": "https://mbasic.facebook.com",
+                                    "Referer": oldURL,
+                                    "Content-Type": "application/x-www-form-urlencoded"
+                                },
+                                allowForbiddenHeaders: true,
+                                body: qs.stringify(postObj, "&", "=")
+                            });
+                        }
+                    }
+
+                    for (; ;) {
+                        if (loginRequest.url.startsWith("https://mbasic.facebook.com/gettingstarted")) {
+                            // Oh well, getting started... is this a new account?
+                            let $3 = cheerio.load(await loginRequest.text());
+                            oldURL = nextURL;
+                            nextURL = new URL($3("a[href$='skip']").attr("href") ?? "/", oldURL).toString();
+        
+                            loginRequest = await ctx.context.fetch(nextURL, {
+                                headers: {
+                                    "Origin": "https://mbasic.facebook.com",
+                                    "Referer": oldURL
+                                },
+                                allowForbiddenHeaders: true
+                            });
+                        } else {
+                            break;
+                        }
+                    }
                 } else {
                     throw null;
                 }
@@ -87,7 +267,7 @@ export default class FacebookBasicALoginHandler extends FacebookALoginHandler {
                     // Oh well, getting started... is this a new account?
                     let $2 = cheerio.load(await p.text());
                     oldURL = nextURL;
-                    nextURL = new URL($2("a[href$='skip']").attr("href") ?? "", oldURL).toString();
+                    nextURL = new URL($2("a[href$='skip']").attr("href") ?? "/", oldURL).toString();
 
                     p = await ctx.context.fetch(nextURL, {
                         headers: {

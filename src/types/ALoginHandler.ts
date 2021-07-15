@@ -6,7 +6,7 @@ export default abstract class FacebookALoginHandler {
     constructor(...args: any[]) { };
 
     /** Login with username and password (optionally 2FA callback) and return account ID. */
-    abstract login(ctx: HTTPContext, email: string, password: string, ask2FA?: (() => Promise<string>) | null): Promise<string>;
+    abstract login(ctx: HTTPContext, email: string, password: string, ask2FA?: (() => Promise<string> | string) | string | null): Promise<string>;
 
     /** Verify that the state is still valid and usable and return account ID. */
     abstract verify(ctx: HTTPContext): Promise<string | null>;

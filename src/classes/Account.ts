@@ -11,7 +11,7 @@ export default class FacebookAccount {
     #pPassword: string | null = null;
     #pState: FacebookAccountState = new FacebookAccountState();
     #pContext: HTTPContext;
-    #p2FA: (() => Promise<string>) | null = null;
+    #p2FA: (() => Promise<string>) | string | null = null;
     #pLoggedIn = false;
     #pAccountID: string | null = null;
 
@@ -57,8 +57,14 @@ export default class FacebookAccount {
 
     /** Create login credentials object with state. */
     constructor(state: Buffer | FacebookAccountState);
-    /** Create login credentials object with username and password, optionally state and/or two-factor authentication callback. */
-    constructor(email: string, password: string, state?: Buffer | FacebookAccountState, twoFactorAuth?: () => Promise<string>);
+    /** Create login credentials object with username and password. */
+    constructor(email: string, password: string);
+    /** Create login credentials object with username, password and state (to bypass 2FA check or use existing state to login). */
+    constructor(email: string, password: string, state: Buffer | FacebookAccountState);
+    /** Create login credentials object with username, password and 2FA (base32 secret or token generator function). */
+    constructor(email: string, password: string, twoFactorAuth: (() => Promise<string>) | string);
+    /** Create login credentials object with username, password, 2FA (base32 secret or token generator function) and state (will use if it's still valid). */
+    constructor(email: string, password: string, state: Buffer | FacebookAccountState, twoFactorAuth: (() => Promise<string>) | string);
     constructor(...args: any[]) {
         if (args[0] instanceof Buffer) {
             this.#pState = new FacebookAccountState(args[0]);
@@ -70,12 +76,15 @@ export default class FacebookAccount {
                 this.#pPassword = args[1];
                 if (args[2] instanceof Buffer) {
                     this.#pState = new FacebookAccountState(args[2]);
-                    if (typeof args[3] === "function") {
+                    if (typeof args[3] === "function" || typeof args[3] === "string") {
                         this.#p2FA = args[3];
                     }
                 } else if (args[2] instanceof FacebookAccountState) {
                     this.#pState = args[2];
-                } else if (typeof args[2] === "function") {
+                    if (typeof args[3] === "function" || typeof args[3] === "string") {
+                        this.#p2FA = args[3];
+                    }
+                } else if (typeof args[2] === "function" || typeof args[2] === "string") {
                     this.#p2FA = args[2];
                 }
             } else {

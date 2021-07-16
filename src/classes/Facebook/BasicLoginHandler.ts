@@ -1,11 +1,11 @@
-import FacebookALoginHandler from "../types/ALoginHandler";
+import FacebookLoginHandler from "./LoginHandler";
 import cheerio from "cheerio";
 import qs from "querystring";
 import { URL } from "url";
-import HTTPContext from "./HTTPContext";
-import generate_2fa from "../functions/generate_2fa";
+import HTTPContext from "../HTTPContext";
+import generate_2fa from "../../functions/generate_2fa";
 
-export default class FacebookBasicALoginHandler extends FacebookALoginHandler {
+export default class FacebookBasicLoginHandler extends FacebookLoginHandler {
     async login(ctx: HTTPContext, email: string, password: string, ask2FA?: (() => Promise<string> | string) | string | null): Promise<string> {
         // Making initial request to get login form.
         let initHTML = await ctx.context.fetch("https://mbasic.facebook.com/");

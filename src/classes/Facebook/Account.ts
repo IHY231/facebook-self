@@ -1,8 +1,8 @@
-import FacebookALoginHandler from "../types/ALoginHandler";
-import account_logout from "../functions/account_logout";
+import FacebookLoginHandler from "./LoginHandler";
+import account_logout from "../../functions/account_logout";
 import FacebookAccountState from "./AccountState";
-import FacebookBasicALoginHandler from "./BasicALoginHandler";
-import HTTPContext from "./HTTPContext";
+import FacebookBasicLoginHandler from "./BasicLoginHandler";
+import HTTPContext from "../HTTPContext";
 
 const defaultUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:90.0) Gecko/20100101 Firefox/90.0";
 
@@ -14,6 +14,10 @@ export default class FacebookAccount {
     #p2FA: (() => Promise<string>) | string | null = null;
     #pLoggedIn = false;
     #pAccountID: string | null = null;
+
+    public get context() {
+        return this.#pContext;
+    }
 
     public get accountID() {
         return this.#pAccountID;
@@ -31,6 +35,7 @@ export default class FacebookAccount {
     }
     public set email(value: string | null) {
         this.#pEmail = value;
+        this.#pLoggedIn = false;
     }
 
     public async getStateBuf() {
@@ -38,6 +43,7 @@ export default class FacebookAccount {
     }
     public async setStateBuf(value: Buffer) {
         this.#pState.setState(value);
+        this.#pLoggedIn = false;
     }
     public get stateObj() {
         return this.#pState;
@@ -49,10 +55,12 @@ export default class FacebookAccount {
 
     public set password(value: string | null) {
         this.#pPassword = value;
+        this.#pLoggedIn = false;
     }
 
-    public set twoFactorAuth(value: () => Promise<string>) {
+    public set twoFactorAuth(value: (() => Promise<string>) | string | null) {
         this.#p2FA = value;
+        this.#pLoggedIn = false;
     }
 
     /** Create login credentials object with state. */
@@ -88,7 +96,7 @@ export default class FacebookAccount {
                     this.#p2FA = args[2];
                 }
             } else {
-                throw new Error("You must add email + password combination and/or account state.");
+                throw new Error("You must add email + password combination (optional: 2FA) and/or account state.");
             }
         }
 
@@ -96,18 +104,18 @@ export default class FacebookAccount {
     }
 
     /** Attempt to login using current credentials. */
-    async login(handler?: FacebookALoginHandler): Promise<void>;
-    async login(force?: boolean, handler?: FacebookALoginHandler): Promise<void>;
+    async login(handler?: FacebookLoginHandler): Promise<void>;
+    async login(force?: boolean, handler?: FacebookLoginHandler): Promise<void>;
     async login(...args: any[]) {
         let force = false;
-        let handler: FacebookALoginHandler = new FacebookBasicALoginHandler();
+        let handler: FacebookLoginHandler = new FacebookBasicLoginHandler();
 
         if (typeof args[0] === "boolean") {
             force = args[0];
-            if (args[1] instanceof FacebookALoginHandler) {
+            if (args[1] instanceof FacebookLoginHandler) {
                 handler = args[1];
             }
-        } else if (args[0] instanceof FacebookALoginHandler) {
+        } else if (args[0] instanceof FacebookLoginHandler) {
             handler = args[0];
         }
 
@@ -136,9 +144,9 @@ export default class FacebookAccount {
     }
 
     /** Verify that we are still logged in (and account is not checkpointed). */
-    async verify(handler?: FacebookALoginHandler) {
-        if (!(handler instanceof FacebookALoginHandler)) 
-            handler = new FacebookBasicALoginHandler();
+    async verify(handler?: FacebookLoginHandler) {
+        if (!(handler instanceof FacebookLoginHandler)) 
+            handler = new FacebookBasicLoginHandler();
 
         this.#pAccountID = await handler.verify(this.#pContext);
         return this.#pLoggedIn = (!!this.#pAccountID && this.#pAccountID != "0");

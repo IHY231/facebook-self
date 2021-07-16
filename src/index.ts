@@ -1,7 +1,7 @@
-import FacebookAccount from "./classes/Account";
-import FacebookAccountState from "./classes/AccountState";
-import FacebookBasicALoginHandler from "./classes/BasicALoginHandler";
+import * as _Facebook from "./classes/Facebook";
+import * as _Messenger from "./classes/Messenger";
+import _HTTPContext from "./classes/HTTPContext";
 
-export const Account = FacebookAccount;
-export const AccountState = FacebookAccountState;
-export const BasicALoginHandler = FacebookBasicALoginHandler;
+export const Facebook = _Facebook;
+export const Messenger = _Messenger;
+export const HTTPContext = _HTTPContext;

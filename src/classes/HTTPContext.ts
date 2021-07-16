@@ -1,9 +1,26 @@
 import { context } from "fetch-h2";
-import FacebookAccountState from "./AccountState";
+import FacebookAccountState from "./Facebook/AccountState";
 
 export default class HTTPContext {
     #userAgent: string;
     #state: FacebookAccountState;
+
+    get state() {
+        return this.#state;
+    }
+
+    set state(v: FacebookAccountState) {
+        if (v instanceof FacebookAccountState) {
+            this.#state = v;
+            this.context.disconnectAll();
+            this.context = context({
+                userAgent: this.#userAgent,
+                cookieJar: this.#state.getCookieJar(),
+                accept: "*/*",
+                overwriteUserAgent: true
+            });
+        }
+    }
 
     get userAgent() {
         return this.#userAgent;

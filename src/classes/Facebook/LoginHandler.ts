@@ -1,7 +1,6 @@
-import FacebookAccountState from "../classes/AccountState";
-import HTTPContext from "../classes/HTTPContext";
+import HTTPContext from "../HTTPContext";
 
-export default abstract class FacebookALoginHandler {
+export default abstract class FacebookLoginHandler {
     /** Construct a single-use only account login handler */
     constructor(...args: any[]) { };
 

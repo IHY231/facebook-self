@@ -1,7 +1,7 @@
 {
-  "name": "fbself-m",
+  "name": "facebook-self",
   "version": "0.0.1",
-  "description": "Interact with Facebook using user accounts (self-bot) through mini/mobile version (m.facebook)",
+  "description": "A node.js library that help you interact with Facebook using user accounts (self-bot)",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
   "types": "dist/types/index.d.js",
@@ -16,7 +16,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/BadAimWeeb/fbself-m.git"
+    "url": "git+https://github.com/BadAimWeeb/facebook-self.git"
   },
   "files": [
     "dist"
@@ -31,9 +31,9 @@
   "author": "BadAimWeeb",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/BadAimWeeb/fbself-m/issues"
+    "url": "https://github.com/BadAimWeeb/facebook-self/issues"
   },
-  "homepage": "https://github.com/BadAimWeeb/fbself-m#readme",
+  "homepage": "https://github.com/BadAimWeeb/facebook-self#readme",
   "devDependencies": {
     "@tsconfig/node14": "^1.0.1",
     "@types/chai": "^4.2.21",

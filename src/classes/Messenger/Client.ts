@@ -1,10 +1,80 @@
 import FacebookAccount from "../Facebook/Account";
 import FacebookAccountState from "../Facebook/AccountState";
+import MessengerMessage from "./Message";
+import MessengerMessageParser from "./MessageParser";
 import MessengerMQTTConnection from "./MQTTConnection";
+import MessengerThread from "./Thread";
+import MessengerUser from "./User";
 
 export default class MessengerClient {
     #account: FacebookAccount | null = null;
     #mqtt: MessengerMQTTConnection | null = null;
+    #parser: MessengerMessageParser | null = null;
+    #cache = {
+        message: new Map<string, MessengerMessage>(),
+        thread: new Map<string, MessengerThread>(),
+        user: new Map<string, MessengerUser>()
+    }
+
+    get users() {
+        let that = this;
+        return {
+            get(userID: string) {
+                let cache = this.cache.get(userID);
+                if (cache) {
+                    return cache;
+                } else {
+                    cache = new MessengerUser(that);
+                    cache.id = userID;
+                    cache.thread = that.threads.get(userID);
+                    this.cache.set(userID, cache);
+                    return cache;
+                }
+            },
+            get cache() {
+                return that.cache.user;
+            }
+        }
+    }
+    get threads() {
+        let that = this;
+        return {
+            get(threadID: string) {
+                let cache = this.cache.get(threadID);
+                if (cache) {
+                    return cache;
+                } else {
+                    cache = new MessengerThread(that);
+                    cache.id = threadID;
+                    this.cache.set(threadID, cache);
+                    return cache;
+                }
+            },
+            get cache() {
+                return that.cache.thread;
+            }
+        }
+    }
+    get messages() {
+        let that = this;
+        return {
+            get(messageID: string) {
+                let cache = this.cache.get(messageID);
+                if (cache) {
+                    return cache;
+                } else {
+                    return null
+                }
+            },
+            get cache() {
+                return that.cache.message;
+            }
+        }
+    }
+
+    get cache() {
+        return this.#cache;
+    }
 
     get loggedIn() {
         if (this.#account) {
@@ -27,12 +97,17 @@ export default class MessengerClient {
         return this.#mqtt;
     }
 
+    get parser() {
+        return this.#parser;
+    }
+
     /** Construct a new Facebook Messenger client. */
     constructor(account?: FacebookAccount) {
         if (account instanceof FacebookAccount) {
             this.#account = account;
             if (this.loggedIn) {
                 this.#mqtt = new MessengerMQTTConnection(this.#account);
+                this.#parser = new MessengerMessageParser(this, this.#mqtt);
                 this.#mqtt.connect();
             }
         }
@@ -91,9 +166,12 @@ export default class MessengerClient {
             await this.#account.login();
 
             this.#mqtt = new MessengerMQTTConnection(this.#account);
+            this.#parser = new MessengerMessageParser(this, this.#mqtt);
             await this.#mqtt.connect();
         }
     }
 
-    
+    destroy() {
+        this.#mqtt?.disconnect();
+    }
 }

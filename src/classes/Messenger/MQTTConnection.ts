@@ -14,6 +14,14 @@ const defSubscribe = [
     "/legacy_web_mtouch"
 ];
 
+export default interface MessengerMQTTConnection {
+    on(event: "message", listener: (topic: string, payload: Buffer, packet: MQTT.IPublishPacket) => void): this;
+    on(event: "publish", listener: (topic: string, message: string | Buffer, opts: MQTT.IClientPublishOptions, callback?: MQTT.PacketCallback | undefined) => void): this;
+
+    emit(event: "message", topic: string, payload: Buffer, packet: MQTT.IPublishPacket): boolean;
+    emit(event: "publish", topic: string, message: string | Buffer, opts: MQTT.IClientPublishOptions, callback?: MQTT.PacketCallback | undefined): boolean;
+}
+
 export default class MessengerMQTTConnection extends EventEmitter {
     #subscribedTopic: string[] = [];
     #publishQueue: [string, string | Buffer, MQTT.IClientPublishOptions, MQTT.PacketCallback | undefined][] = [];
